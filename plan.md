@@ -41,14 +41,18 @@
 - argument-hint 사용
 - 여러 인자($0, $1) 활용
 
-### 2-3. 고급 예제: `pr-summary` (동적 컨텍스트 + 서브에이전트)
+### 2-3. 고급 예제: `pr-summary` (동적 컨텍스트 + 서브에이전트 + 보조 파일)
 ```
 .claude/skills/pr-summary/
-└── SKILL.md
+├── SKILL.md
+├── review-checklist.md            # 보조 파일: 리뷰 체크리스트
+└── scripts/
+    └── collect-metrics.sh         # 스크립트: PR 메트릭 수집
 ```
 - context: fork, agent 설정
 - !`command` 동적 컨텍스트 주입
-- 보조 파일 참조 패턴
+- **보조 파일 참조 패턴**: SKILL.md가 길어질 때 체크리스트/규칙/가이드라인을 별도 .md로 분리하고 SKILL.md에서 참조하는 방법
+- **scripts/ 활용 패턴**: 스킬이 실행해야 하는 셸 스크립트(린터, 메트릭 수집, 포맷터 등)를 scripts/에 두고 ${CLAUDE_SKILL_DIR}/scripts/로 경로 참조하는 방법
 
 ### 2-4. 제어 예제: `deploy` (수동 전용 + 위험 작업)
 ```
@@ -85,6 +89,8 @@ README가 길어지는 걸 방지하기 위해 별도 상세 레퍼런스 문서
 - allowed-tools에 쓸 수 있는 도구 목록
 - model 필드에 쓸 수 있는 모델 ID 목록
 - 스킬 간 우선순위 (Enterprise > Personal > Project > Plugin)
+- **보조 파일 가이드**: 언제 보조 파일을 분리해야 하는지 (SKILL.md 500줄 초과, 여러 스킬에서 공통 규칙 참조, 체크리스트/컨벤션/규칙 등 독립적인 문서)
+- **scripts/ 가이드**: 언제 스크립트가 필요한지 (반복적인 셸 작업, 외부 도구 호출 래핑, 빌드/배포 자동화 단계, 린터/포맷터 실행)
 
 ---
 
@@ -105,7 +111,10 @@ skills-template/
         ├── gen-test/
         │   └── SKILL.md               # 중급 예제
         ├── pr-summary/
-        │   └── SKILL.md               # 고급 예제
+        │   ├── SKILL.md               # 고급 예제
+        │   ├── review-checklist.md    # 보조 파일 예제
+        │   └── scripts/
+        │       └── collect-metrics.sh # 스크립트 예제
         └── deploy/
             └── SKILL.md               # 수동 전용 예제
 ```
