@@ -1,20 +1,44 @@
-# Claude Code Skills Template
+# Agent Skills Template
 
-A comprehensive template repository for creating [Claude Code](https://claude.com/claude-code) skills. Learn by example, copy templates, and build your own.
+A comprehensive template repository for creating [Agent Skills](https://agentskills.io). Learn by example, copy templates, and build your own.
 
-> Claude Code skills follow the open [Agent Skills](https://agentskills.io) standard, extended with Claude Code-specific fields for tool permissions, model overrides, subagent execution, and lifecycle hooks.
+> This repo follows the open [Agent Skills](https://agentskills.io) standard, with examples of Claude Code-specific extension fields for tool permissions, model overrides, subagent execution, and lifecycle hooks.
 
 ## What is a Skill?
 
-A skill is a reusable prompt packaged as a `SKILL.md` file that Claude can invoke (or users can trigger with `/skill-name`). Skills replaced the older `.claude/commands/` system, adding support for supporting files, scripts, and richer frontmatter control.
+A skill is a reusable prompt packaged as a `SKILL.md` file that an agent can invoke (or users can trigger with `/skill-name`). Each skill lives in its own directory with optional scripts, reference docs, and static assets.
 
 ```
 .claude/skills/my-skill/
 ├── SKILL.md              # Main instructions (required)
-├── checklist.md          # Supporting file (optional)
-└── scripts/
-    └── validate.sh       # Script Claude can execute (optional)
+├── scripts/              # Executable code (optional)
+│   └── validate.sh
+├── references/           # Additional documentation (optional)
+│   └── REFERENCE.md
+└── assets/               # Static resources (optional)
+    └── template.json
 ```
+
+### Optional Directories
+
+The [Agent Skills standard](https://agentskills.io/specification) defines three optional directories:
+
+| Directory | Purpose | Examples |
+|-----------|---------|----------|
+| `scripts/` | Executable code that the agent can run | Shell scripts, Python scripts, validators |
+| `references/` | Additional documentation loaded on demand | Technical references, checklists, form templates |
+| `assets/` | Static resources | Document templates, schemas, lookup tables |
+
+These files are **never preloaded** — the agent reads them only when the skill is invoked and needs them (progressive disclosure). Reference from SKILL.md using `${CLAUDE_SKILL_DIR}`:
+
+```markdown
+Run the validation script:
+!`bash ${CLAUDE_SKILL_DIR}/scripts/validate.sh`
+
+See [the checklist](${CLAUDE_SKILL_DIR}/references/checklist.md) for details.
+```
+
+> Keep file references one level deep from SKILL.md. Avoid deeply nested reference chains. For full details, see [REFERENCE.md § Directory Structure](REFERENCE.md#directory-structure).
 
 ## Quick Start
 
@@ -43,7 +67,7 @@ Do something with: $ARGUMENTS
 /my-skill hello world
 ```
 
-Or let Claude auto-invoke it based on the description.
+Or let the agent auto-invoke it based on the description.
 
 ## SKILL.md Format
 
@@ -78,7 +102,7 @@ hooks:                               # [ext]  Lifecycle hooks
 | `name` | `[core]` | Slash command name (required for spec compliance) |
 | `description` | `[core]` | What the skill does, in third person (required for spec compliance) |
 | `argument-hint` | `[ext]` | Autocomplete hint shown to users |
-| `allowed-tools` | `[CLI-only]` | Tools Claude can use without per-use approval |
+| `allowed-tools` | `[CLI-only]` | Tools the agent can use without per-use approval |
 | `model` | `[ext]` | Override the model for this skill |
 | `context` | `[ext]` | Set to `fork` for isolated subagent execution |
 | `agent` | `[ext]` | Subagent type when using `context: fork` |
@@ -111,7 +135,7 @@ Use `` !`command` `` to inject shell output as preprocessing:
 !`git diff --name-only main...HEAD`
 ```
 
-Claude sees only the output, not the commands.
+The agent sees only the output, not the commands.
 
 ## Storage and Precedence
 
@@ -126,22 +150,22 @@ Plugin skills use a separate namespace (`plugin-name:skill-name`) and don't conf
 ## Naming Rules
 
 - Max **64 characters**, lowercase letters + numbers + hyphens only
-- Cannot contain **"anthropic"** or **"claude"**
 - No leading/trailing hyphens, no consecutive hyphens (`--`)
 - Directory name must match the `name` field
+- **Claude Code only**: Cannot contain `"anthropic"` or `"claude"`
 
 ## Examples
 
-This repo includes 6 example skills covering common patterns:
+This repo includes 6 example skills in [`examples/skills/`](examples/skills/) covering common patterns. These are placed outside `.claude/skills/` so they are **not loaded as active skills** — they are reference-only.
 
 | Example | Pattern | Key Features |
 |---------|---------|-------------|
-| [`review`](.claude/skills/review/) | Basic | Minimal frontmatter, `$ARGUMENTS` |
-| [`gen-test`](.claude/skills/gen-test/) | Tools + Args | `allowed-tools`, `argument-hint`, `$0`/`$1`, `model` override |
-| [`pr-summary`](.claude/skills/pr-summary/) | Advanced | `context: fork`, `agent`, `!`command``, supporting files, scripts |
-| [`deploy`](.claude/skills/deploy/) | Manual-only | `disable-model-invocation: true`, safe patterns for dangerous ops |
-| [`legacy-context`](.claude/skills/legacy-context/) | Claude-only | `user-invocable: false`, background knowledge |
-| [`secure-ops`](.claude/skills/secure-ops/) | Hooks | `hooks` (PreToolUse), `once: true`, security scripts |
+| [`review`](examples/skills/review/) | Basic | Minimal frontmatter, `$ARGUMENTS` |
+| [`gen-test`](examples/skills/gen-test/) | Tools + Args | `allowed-tools`, `argument-hint`, `$0`/`$1`, `model` override |
+| [`pr-summary`](examples/skills/pr-summary/) | Advanced | `context: fork`, `agent`, `!`command``, supporting files, scripts |
+| [`deploy`](examples/skills/deploy/) | Manual-only | `disable-model-invocation: true`, safe patterns for dangerous ops |
+| [`legacy-context`](examples/skills/legacy-context/) | Claude-only | `user-invocable: false`, background knowledge |
+| [`secure-ops`](examples/skills/secure-ops/) | Hooks | `hooks` (PreToolUse), `once: true`, security scripts |
 
 ## Templates
 
@@ -161,14 +185,14 @@ cp templates/basic.md .claude/skills/my-skill/SKILL.md
 
 ## Installation
 
-To use these example skills in your project:
+To use an example skill in your project:
 
 ```bash
-# Copy a single skill
-cp -r .claude/skills/review/ /your/project/.claude/skills/
+# Copy a single example skill
+cp -r examples/skills/review/ /your/project/.claude/skills/
 
 # Or copy all examples
-cp -r .claude/skills/* /your/project/.claude/skills/
+cp -r examples/skills/* /your/project/.claude/skills/
 ```
 
 ## Cross-tool Compatibility
@@ -187,7 +211,7 @@ When using third-party skills:
 
 ## Resources
 
-- [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)
 - [Agent Skills Specification](https://agentskills.io/specification)
-- [Skill Authoring Best Practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 - [Full Field Reference](REFERENCE.md) (this repo)
+- [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)
+- [Skill Authoring Best Practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)

@@ -1,6 +1,6 @@
 # SKILL.md Frontmatter Reference
 
-> Authoritative sources: [Claude Code Skills Docs](https://code.claude.com/docs/en/skills), [Agent Skills Spec](https://agentskills.io/specification), [Claude Code Hooks Docs](https://code.claude.com/docs/en/hooks)
+> Authoritative sources: [Agent Skills Spec](https://agentskills.io/specification), [Claude Code Skills Docs](https://code.claude.com/docs/en/skills), [Claude Code Hooks Docs](https://code.claude.com/docs/en/hooks)
 
 ## Field Reference
 
@@ -14,8 +14,8 @@ Each field is labeled with its origin:
 
 | Field | Type | Required | Default | Label | Description |
 |-------|------|----------|---------|-------|-------------|
-| `name` | string | Yes | — | `[core]` | Slash command name. Max 64 chars, lowercase + numbers + hyphens only. Cannot contain "anthropic" or "claude". No leading/trailing hyphens, no consecutive hyphens (`--`). Must match the containing directory name. |
-| `description` | string | Yes | — | `[core]` | What the skill does. Max 1024 chars, third person ("Processes..." not "I can..."), no XML tags. Claude uses this to decide when to auto-invoke. |
+| `name` | string | Yes | — | `[core]` | Slash command name. Max 64 chars, lowercase + numbers + hyphens only. No leading/trailing hyphens, no consecutive hyphens (`--`). Must match the containing directory name. Claude Code additionally prohibits `"anthropic"` and `"claude"` in the name. |
+| `description` | string | Yes | — | `[core]` | What the skill does. Max 1024 chars, third person ("Processes..." not "I can..."), no XML tags. The agent uses this to decide when to auto-invoke. |
 | `license` | string | No | — | `[core]` | License reference for distributable skills. |
 | `compatibility` | string | No | — | `[core]` | Required tools or dependencies. |
 | `metadata` | map | No | — | `[core]` | Arbitrary string-to-string key-value pairs for tracking. |
@@ -55,6 +55,74 @@ How `disable-model-invocation` and `user-invocable` interact:
 
 ---
 
+## Directory Structure
+
+A skill is a directory containing a `SKILL.md` file and optional supporting directories. This structure is defined by the [Agent Skills standard](https://agentskills.io/specification).
+
+```
+my-skill/
+├── SKILL.md              # Required: metadata + instructions
+├── scripts/              # Optional: executable code
+├── references/           # Optional: additional documentation
+├── assets/               # Optional: static resources
+└── ...                   # Any additional files or directories
+```
+
+### `scripts/`
+
+Contains executable code that the agent can run during skill execution.
+
+| Guideline | Detail |
+|-----------|--------|
+| Self-contained | Scripts should work independently or clearly document their dependencies |
+| Error messages | Include helpful error output for debugging |
+| Edge cases | Handle common failure modes gracefully |
+
+Supported languages depend on the agent implementation. Common options: **Bash**, **Python**, **JavaScript**.
+
+```yaml
+# Reference in hooks
+hooks:
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: "bash ${CLAUDE_SKILL_DIR}/scripts/security-check.sh"
+```
+
+```markdown
+# Reference in SKILL.md body via dynamic context injection
+!`bash ${CLAUDE_SKILL_DIR}/scripts/collect-metrics.sh`
+```
+
+### `references/`
+
+Contains additional documentation that the agent reads on demand when extra context is needed.
+
+| File | Use Case |
+|------|----------|
+| `REFERENCE.md` | Detailed technical reference |
+| `FORMS.md` | Form templates or structured data formats |
+| Domain-specific files | `finance.md`, `legal.md`, etc. |
+
+Keep individual reference files **focused and small** — the agent loads them into context, so smaller files mean less context usage.
+
+### `assets/`
+
+Contains static resources that the skill may need:
+
+- **Templates**: Document templates, configuration templates
+- **Data files**: Lookup tables, JSON schemas, CSV data
+- **Images**: Diagrams, examples (for multimodal agents)
+
+### File Reference Rules
+
+- Use **relative paths** from the skill root or `${CLAUDE_SKILL_DIR}` to reference files
+- Keep references **one level deep** from SKILL.md — avoid deeply nested chains
+- When SKILL.md exceeds ~500 lines, move detailed content to `references/`
+
+---
+
 ## Progressive Disclosure
 
 Skills use a lazy-loading architecture to minimize context window usage:
@@ -82,7 +150,7 @@ The total character budget for all skill descriptions is:
 |------|---------|
 | Max 64 characters | `my-awesome-skill` |
 | Lowercase letters, numbers, hyphens only | `gen-test` (not `Gen_Test`) |
-| Cannot contain "anthropic" or "claude" | `my-claude-helper` is invalid |
+| Cannot contain "anthropic" or "claude" (Claude Code only) | `my-claude-helper` is invalid |
 | No leading/trailing hyphens | `-my-skill` is invalid |
 | No consecutive hyphens | `my--skill` is invalid |
 | Directory name must match `name` field | `skills/gen-test/SKILL.md` → `name: gen-test` |
@@ -193,7 +261,7 @@ The `once: true` flag is a **skills-only feature** (not available in agent hooks
 
 ### Dynamic Context Injection
 
-The `` !`command` `` syntax runs shell commands **before** the skill content is sent to Claude. The output replaces the placeholder. This is preprocessing — Claude only sees the result.
+The `` !`command` `` syntax runs shell commands **before** the skill content is sent to the agent. The output replaces the placeholder. This is preprocessing — the agent only sees the result.
 
 ```markdown
 ## Current Branch
@@ -269,7 +337,7 @@ claude --debug  # Look for skill loading messages
 |---------|-----|
 | YAML indentation error | Use 2 spaces, no tabs |
 | Field name typo (`allowed_tools`) | Use hyphens: `allowed-tools` |
-| Missing `description` | Add one — without it, Claude can't auto-discover |
+| Missing `description` | Add one — without it, the agent can't auto-discover |
 | YAML multiline (`>-`, `\|`) in description | Keep description on a single line |
 | Directory name doesn't match `name` | Ensure they're identical |
 | Editing skill during session | Restart Claude Code (except `--add-dir` skills) |
